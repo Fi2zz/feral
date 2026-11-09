@@ -123,7 +123,8 @@ final class ChatStore {
         do {
             let stream = try await runtime.askStream(
                 question: question,
-                conversation: history
+                conversation: history,
+                sessionID: conversationID
             )
             try await consume(stream)
             commitAnswer()

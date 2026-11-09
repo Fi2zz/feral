@@ -51,8 +51,8 @@ final class RuntimeStore {
     }
 
     /// 问一句。运行时装配失败、Key 缺失都原样抛给界面，不静默吞掉。
-    func ask(question: String, conversation: [LlmMessage]) async throws -> String {
-        let stream = try await askStream(question: question, conversation: conversation)
+    func ask(question: String, conversation: [LlmMessage], sessionID: UUID) async throws -> String {
+        let stream = try await askStream(question: question, conversation: conversation, sessionID: sessionID)
         var answer = ""
         for try await event in stream {
             if case .textDelta(let delta) = event { answer += delta }
@@ -64,7 +64,8 @@ final class RuntimeStore {
     /// `await` 是因为真正建流的那层在 `@ContextTreeActor` 上。
     func askStream(
         question: String,
-        conversation: [LlmMessage]
+        conversation: [LlmMessage],
+        sessionID: UUID
     ) async throws -> AsyncThrowingStream<LlmStreamEvent, Error> {
         guard let runtime else {
             throw RuntimeError.notBootstrapped
@@ -72,7 +73,8 @@ final class RuntimeStore {
         return await runtime.askStream(
             system: ChatPrompt.system(today: Date()),
             conversation: conversation,
-            question: question
+            question: question,
+            headers: CoachLlmConfig.provider.sessionHeaders(sessionID: sessionID)
         )
     }
 

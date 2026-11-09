@@ -20,7 +20,7 @@ struct ProviderModelSection: View {
         Section {
             if CoachLlmConfig.isModelOverridden {
                 LabeledContent("模型", value: CoachLlmConfig.model)
-                Label("被环境变量 KIMI_MODEL 顶掉了，这里的点选不生效。", systemImage: "wrench.and.screwdriver")
+                Label("被环境变量顶掉了，这里的点选不生效。", systemImage: "wrench.and.screwdriver")
                     .font(.caption)
                     .foregroundStyle(.orange)
             } else {

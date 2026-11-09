@@ -10,17 +10,17 @@ enum CoachLlmConfig {
     }
 
     static var baseUrl: String {
-        overridden("KIMI_BASE_URL") ?? provider.defaultBaseUrl
+        overridden("BASE_URL") ?? provider.defaultBaseUrl
     }
 
     /// 模型：kimi 联调可用环境变量顶掉 > 设置页点选的 > 默认。
     static var model: String {
-        overridden("KIMI_MODEL") ?? CoachModelStore.selected(provider: provider).id
+        overridden("MODEL") ?? CoachModelStore.selected(provider: provider).id
     }
 
     /// 推理档位：联调用环境变量顶掉 > 设置页选过的 > 默认 high。只对认这个参数的模型有意义。
     static var reasoningEffort: ReasoningEffort {
-        if let raw = overridden("KIMI_REASONING_EFFORT"),
+        if let raw = overridden("REASONING_EFFORT"),
            let effort = ReasoningEffort(rawValue: raw) {
             return effort
         }
@@ -29,7 +29,7 @@ enum CoachLlmConfig {
 
     /// 档位被环境变量钉住时设置页的选择器不生效，界面上只显示值，免得以为改了有用。
     static var isEffortOverridden: Bool {
-        overridden("KIMI_REASONING_EFFORT") != nil
+        overridden("REASONING_EFFORT") != nil
     }
 
     /// 端点或模型被环境变量改过：界面上要能看出来，免得以为在跟真服务说话。
@@ -38,11 +38,11 @@ enum CoachLlmConfig {
     }
 
     static var isBaseUrlOverridden: Bool {
-        overridden("KIMI_BASE_URL") != nil
+        overridden("BASE_URL") != nil
     }
 
     static var isModelOverridden: Bool {
-        overridden("KIMI_MODEL") != nil
+        overridden("MODEL") != nil
     }
 
     /// 要并进请求体顶层的字段。按当前模型的能力位组，一个多余字段都不发。
@@ -63,13 +63,15 @@ enum CoachLlmConfig {
     static func openAi() -> OpenAiConfig {
         var config = OpenAiConfig(name: provider.rawValue, baseUrl: baseUrl, model: model)
         config.credentialKey = provider.credentialKey
+        config.userAgent = "Feral/0.1.0"
         return config
     }
 
     /// 空串当作没设，免得 `KIMI_BASE_URL=` 反而把默认端点顶掉。
-    private static func overridden(_ key: String) -> String? {
-        guard provider.honorsEnvironmentOverride,
-              let value = ProcessInfo.processInfo.environment[key], !value.isEmpty else { return nil }
+    /// 键名按提供商前缀拼：Kimi 是 `KIMI_*`，OpenCode Go 是 `OPENCODE_GO_*`。
+    private static func overridden(_ suffix: String) -> String? {
+        guard let prefix = provider.environmentPrefix,
+              let value = ProcessInfo.processInfo.environment["\(prefix)_\(suffix)"], !value.isEmpty else { return nil }
         return value
     }
 }

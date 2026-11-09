@@ -66,11 +66,13 @@ class Handler(BaseHTTPRequestHandler):
         history = [m for m in messages if m.get("role") in ("user", "assistant")][:-1]
 
         asked = user.split("\n")[-1][:60]
+        session = self.headers.get("x-opencode-session") or "（无）"
 
         lines = [
             "（mock）收到了。",
             f"reasoning_effort：{body.get('reasoning_effort', '（无）')}。",
             f"system {len(system)} 字。",
+            f"x-opencode-session：{session}。",
             f"历史消息 {len(history)} 条。这句是：{asked}",
         ]
         return "\n".join(lines)

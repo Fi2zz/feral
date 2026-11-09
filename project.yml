@@ -25,7 +25,7 @@ packages:
   Swiftus:
     # https 被墙时走 SSH：SPM 底层是 git，靠全局 `insteadOf` 把 https 重写成 ssh。
     url: ssh://git@github.com/Fi2zz/swiftus.git
-    exactVersion: "0.1.6"
+    exactVersion: "0.1.7"
 
 targets:
   Feral:

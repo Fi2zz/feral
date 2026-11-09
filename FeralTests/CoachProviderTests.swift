@@ -50,6 +50,16 @@ struct CoachProviderTests {
         #expect(CoachProvider.openCodeGo.fallbackModel.id == "deepseek-v4.1-flash")
     }
 
+    @Test("OpenCode Go 每个请求带会话头，其他提供商不带")
+    func sessionHeaders() {
+        let id = UUID()
+        #expect(CoachProvider.openCodeGo.sessionHeaders(sessionID: id) == [
+            "x-opencode-session": id.uuidString,
+        ])
+        #expect(CoachProvider.kimi.sessionHeaders(sessionID: id).isEmpty)
+        #expect(CoachProvider.deepseek.sessionHeaders(sessionID: id).isEmpty)
+    }
+
     @Test("OpenCode Go 每个提供商各记模型，互不干扰")
     func openCodeGoModelSelection() throws {
         let defaults = try isolated()

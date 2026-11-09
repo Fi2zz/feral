@@ -26,8 +26,23 @@ enum CoachProvider: String, CaseIterable, Identifiable, Sendable {
     var models: [CoachModel] { profile.models }
     var fallbackModel: CoachModel { profile.models[0] }
 
-    /// 环境变量覆盖（联调 mock）只对 Kimi 开放，其余两家没有这条通道。
-    var honorsEnvironmentOverride: Bool { self == .kimi }
+    /// 每次请求要带的自定义头。OpenCode Go 要求每个会话一个稳定的会话标识。
+    func sessionHeaders(sessionID: UUID) -> [String: String] {
+        guard self == .openCodeGo else { return [:] }
+        return ["x-opencode-session": sessionID.uuidString]
+    }
+
+    /// 联调环境变量前缀。DeepSeek 没有 mock 通道，返回 nil。
+    var environmentPrefix: String? {
+        switch self {
+        case .kimi: "KIMI"
+        case .openCodeGo: "OPENCODE_GO"
+        case .deepseek: nil
+        }
+    }
+
+    /// 环境变量覆盖（联调 mock）只对配了前缀的提供商开放。
+    var honorsEnvironmentOverride: Bool { environmentPrefix != nil }
 }
 
 /// 一家提供商的全部差异：界面标题、端点、凭据键名、钥匙串 service、模型清单。

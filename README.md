@@ -77,6 +77,9 @@ OpenCode Go 走订阅制网关 `https://opencode.ai/zen/go/v1`，只列了走 Ch
 | `minimax-m3` | 性价比 | 不发 |
 | `mimo-v2.6-flash` | 极低成本 | 不发 |
 
+OpenCode Go 要求每个会话带稳定的 `x-opencode-session`，这里的取值就是当前会话 id；请求的
+`User-Agent` 统一是 `Feral/0.1.0`（满足网关的客户端标识要求）。
+
 换模型会立刻重新装配。联调时可以 `KIMI_MODEL=kimi-k2.6` 临时顶掉（只对 Kimi 生效），
 设置页会显示被顶掉的状态。
 
@@ -111,13 +114,14 @@ make run-mock-device MOCK_URL=http://192.168.x.x:8099/v1   # 终端 B
 其余：`make test-llm` 起服务并跑联调用例；`make mock-fail` 固定返回 401 验错误提示；
 `make lan-ip` 打印 Mac 的局域网地址。真机第一次跑要允许「本地网络」权限弹窗。
 
-App 侧靠环境变量改端点，默认值不动：`KIMI_BASE_URL` / `KIMI_MODEL`，**这条通道只对 Kimi
-生效**（选了 DeepSeek 时环境变量不顶任何东西，免得 mock 串到真服务）。设置页会显示
+App 侧靠环境变量改端点，默认值不动：Kimi 用 `KIMI_BASE_URL` / `KIMI_MODEL` /
+`KIMI_REASONING_EFFORT`，OpenCode Go 用 `OPENCODE_GO_*` 同名后缀。**这条通道只对 Kimi 与
+OpenCode Go 生效**（选了 DeepSeek 时环境变量不顶任何东西，免得 mock 串到真服务）。设置页会显示
 当前端点，被改过还会挂一条橙色提示，免得以为在跟真服务端说话。端点被指到本机时，
 钥匙串里没有 Key 会补一把占位 Key（假服务不校验 Key），干净模拟器也能直接跑。
 
-假服务的回话会把收到的东西回述一遍——system 字数、历史几条、最后一句是什么——所以它同时是
-一份「发出去的到底是什么」的现场证据。
+假服务的回话会把收到的东西回述一遍——system 字数、`x-opencode-session`、历史几条、最后一句是什么——
+所以它同时是一份「发出去的到底是什么」的现场证据。
 
 ## 目录结构
 
@@ -159,7 +163,7 @@ docs/               Swiftus 接入文档
 ## 网络备注
 
 本机 `https://github.com` 不通、SSH 通，所以 `project.yml` 里 Swiftus 走
-`ssh://git@github.com/Fi2zz/swiftus.git`（tag `v0.1.6`，含间接依赖 Yams）。
+`ssh://git@github.com/Fi2zz/swiftus.git`（tag `v0.1.7`，含间接依赖 Yams）。
 已在本机 git 全局配了一条重写，让 SPM 克隆 https 源时也走 SSH：
 
 ```bash

@@ -12,25 +12,25 @@ enum MockKimiServer {
     /// 用例会往钥匙串里塞一把假 Key。调用方拿这个动作用 defer 收尾还原：
     /// 测试宿主的钥匙串就是模拟器里 App 的钥匙串，留一把 sk-mock 会让 App
     /// 拿着假 Key 去撞真接口，还显示「已就绪」。
-    static func stashKey() -> () -> Void {
+    static func stashKey(provider: CoachProvider = .kimi) -> () -> Void {
         let previous = try? KeychainStore.read(
-            service: CoachProvider.kimi.keychainService,
-            account: CoachProvider.kimi.credentialKey
+            service: provider.keychainService,
+            account: provider.credentialKey
         )
         return {
             if let previous, !previous.isEmpty {
-                try? CoachKeyStore.save(previous, provider: .kimi)
+                try? CoachKeyStore.save(previous, provider: provider)
             } else {
-                try? CoachKeyStore.clear(provider: .kimi)
+                try? CoachKeyStore.clear(provider: provider)
             }
         }
     }
 
-    /// 装配按 `.standard` 里选的提供商走；联调固定钉在 kimi，跑完还原，
-    /// 免得在模拟器里切过 DeepSeek 之后用例去撞真端点。
-    static func pinKimiProvider() -> () -> Void {
+    /// 装配按 `.standard` 里选的提供商走；联调固定钉在指定提供商，跑完还原，
+    /// 免得在模拟器里切过其他提供商之后用例去撞真端点。
+    static func pinProvider(_ provider: CoachProvider) -> () -> Void {
         let previous = UserDefaults.standard.string(forKey: CoachProviderStore.defaultsKey)
-        CoachProviderStore.save(.kimi)
+        CoachProviderStore.save(provider)
         return {
             if let previous {
                 UserDefaults.standard.set(previous, forKey: CoachProviderStore.defaultsKey)
@@ -38,6 +38,10 @@ enum MockKimiServer {
                 UserDefaults.standard.removeObject(forKey: CoachProviderStore.defaultsKey)
             }
         }
+    }
+
+    static func pinKimiProvider() -> () -> Void {
+        pinProvider(.kimi)
     }
 
     /// 直接做一次 TCP 连接，不走 URLSession——这个值在读测试 trait 时求值，

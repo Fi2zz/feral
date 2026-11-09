@@ -118,6 +118,28 @@ struct ChatStoreIntegrationTests {
         #expect(reply.contains("历史消息 2 条"), "接着聊要带上这段的一问一答，而不是新会话那两句")
     }
 
+    @Test("OpenCode Go 请求带上当前会话的 x-opencode-session")
+    func openCodeGoSessionHeader() async throws {
+        setenv("OPENCODE_GO_BASE_URL", MockKimiServer.baseUrl, 1)
+        defer { unsetenv("OPENCODE_GO_BASE_URL") }
+        let restoreProvider = MockKimiServer.pinProvider(.openCodeGo)
+        defer { restoreProvider() }
+        let restoreKey = MockKimiServer.stashKey(provider: .openCodeGo)
+        defer { restoreKey() }
+        try CoachKeyStore.save("sk-mock", provider: .openCodeGo)
+
+        let runtimeStore = RuntimeStore()
+        runtimeStore.start()
+        try await waitUntilBooted(runtimeStore)
+        let store = try freshStore(runtimeStore: runtimeStore)
+
+        await store.send("在吗")
+
+        #expect(store.failure == nil)
+        let reply = try #require(store.messages.last?.content)
+        #expect(reply.contains("x-opencode-session：\(store.conversationID.uuidString)"))
+    }
+
     /// 一条用例一段独立会话。测试共用 `TestStore.context` 这一个消息库，如果都用
     /// 默认的「遗留会话」id，别的用例的消息就会混进来（历史条数、消息条数全不准）。
     private func freshStore(runtimeStore: RuntimeStore) throws -> ChatStore {

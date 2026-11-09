@@ -33,8 +33,15 @@ final class FeralRuntime {
     }
 
     /// 问一句。不传 tools：对话只读，模型没有写数据的手段。
-    func ask(system: String, conversation: [LlmMessage], question: String) async throws -> String {
-        let result = try await provider.chat(chatRequest(system: system, conversation: conversation, question: question))
+    func ask(
+        system: String,
+        conversation: [LlmMessage],
+        question: String,
+        headers: [String: String] = [:]
+    ) async throws -> String {
+        let result = try await provider.chat(
+            chatRequest(system: system, conversation: conversation, question: question, headers: headers)
+        )
         return result.content.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
@@ -42,15 +49,24 @@ final class FeralRuntime {
     func askStream(
         system: String,
         conversation: [LlmMessage],
-        question: String
+        question: String,
+        headers: [String: String] = [:]
     ) -> AsyncThrowingStream<LlmStreamEvent, Error> {
-        provider.chatStream(chatRequest(system: system, conversation: conversation, question: question))
+        provider.chatStream(
+            chatRequest(system: system, conversation: conversation, question: question, headers: headers)
+        )
     }
 
-    private func chatRequest(system: String, conversation: [LlmMessage], question: String) -> LlmRequest {
+    private func chatRequest(
+        system: String,
+        conversation: [LlmMessage],
+        question: String,
+        headers: [String: String] = [:]
+    ) -> LlmRequest {
         LlmRequest(
             messages: [LlmMessage("system", system)] + conversation + [LlmMessage("user", question)],
-            options: CoachLlmConfig.requestOptions
+            options: CoachLlmConfig.requestOptions,
+            headers: headers.isEmpty ? nil : headers
         )
     }
 }
