@@ -61,7 +61,7 @@ fastlane/Preview.html
 fastlane/screenshots/**/*.png
 fastlane/test_output
 
-# ── Replo ───────────────────────────────────────────────────────────────────
+# ── Feral ───────────────────────────────────────────────────────────────────
 .DS_Store
 
 # XcodeGen 生成物：project.yml 才是工程真源，改完跑 `xcodegen generate`。

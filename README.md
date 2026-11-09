@@ -1,13 +1,10 @@
-# Replo
+# Feral
 
-回线计划训练体系代码化的自用 iOS App。SwiftUI + SwiftData + CloudKit 私有库同步，
-对话教练（Kimi / DeepSeek 可选）经 [Swiftus](https://github.com/Fi2zz/swiftus) 的 OpenAI 兼容 wire 层调用。
+一个纯对话的 iOS App。SwiftUI + SwiftData + CloudKit 私有库同步，
+对话模型（Kimi / DeepSeek 可选）经 [Swiftus](https://github.com/Fi2zz/swiftus) 的
+OpenAI 兼容 wire 层调用。
 
-当前状态：**模块 1-6（数据模型与种子、规则引擎与配重、训练课流程、WOD 计时器、日历与体重、对话教练）已交付**，共 186 条用例全绿；
-模块 7（CloudKit 同步）按 [docs/Replo_v1_实现委托提示词_v2.txt](docs/Replo_v1_实现委托提示词_v2.txt) 的顺序逐个填。
-日历页月历用 [HorizonCalendar](https://github.com/airbnb/HorizonCalendar) 横向分页滑月，下方内嵌选中日安排（默认今天），
-今天的力量课可进入「记录 → 复盘 → 决策」三步流程并写入 `SessionLog` + `WeightDecision`。
-Tab 是 日历 / WOD / 体重 / 教练 四个。
+当前只有对话一个功能：多会话、流式输出、Markdown 渲染、停止生成、Key 存钥匙串。
 
 ## 快速开始
 
@@ -17,7 +14,7 @@ make test          # 模拟器上跑全部用例
 make run           # 编译 → 装到已连接的手机 → 启动
 ```
 
-也可以手动来：`make generate` 后 `open Replo.xcodeproj`。`make generate` 在工程无变化时跳过重新生成
+也可以手动来：`make generate` 后 `open Feral.xcodeproj`。`make generate` 在工程无变化时跳过重新生成
 （`project.yml` 或源码文件清单变了才会重跑），免得重生成冲掉 Xcode 里的状态。
 `.xcodeproj` 是生成物，不入库；改工程配置只改 `project.yml` 后重新生成。
 签名团队在首次生成时写进 `project.local.yml`（本机专属、不入库），重新生成也丢不了签名。
@@ -38,14 +35,12 @@ make run           # 编译 → 装到已连接的手机 → 启动
 
 ## 选提供商、填 API Key
 
-打开 App 的「教练」页，点右上角的钥匙图标：先选提供商（Kimi / DeepSeek），
+打开 App，点右上角的钥匙图标：先选提供商（Kimi / DeepSeek），
 再在这家自己的 Key 区块里粘贴 `sk-…` 点保存。各家的 Key 分别存钥匙串（Kimi 是
-service `com.fi2zz.replo.moonshot`、account `KIMI_API_KEY`，其余两家同理），不落文件、不进仓库；
+service `com.fi2zz.feral.moonshot`、account `KIMI_API_KEY`，DeepSeek 同理），不落文件、不进仓库；
 保存后运行时立刻重新装配，状态行应该从「装配失败：缺少凭据」变成「已就绪」。同一页也能清除已保存的 Key。
 
-问句会自动带上最近 7 天的训练记录与当前周次（三份计划文档全文在 system prompt 里，见
-`Replo/Core/Coach/CoachDocuments.swift`）。对话只读：不传 tools，模型没有写数据的手段。
-发不出去时输入框上方会红字说明原因，不静默失败。
+对话只读：不传 tools，模型没有写数据的手段。发不出去时输入框上方会红字说明原因，不静默失败。
 
 界面四件事：
 - **流式**：走 Swiftus 的 `chatStream`，正文增量边收边显示，K3 的思考增量显示成「思考中…」。
@@ -63,27 +58,23 @@ service `com.fi2zz.replo.moonshot`、account `KIMI_API_KEY`，其余两家同理
 
 | 模型 | 上下文 | 说明 |
 |---|---|---|
-| `kimi-k3` | 1M token | 默认。旗舰，长文档规则跟随更稳 |
+| `kimi-k3` | 1M token | 默认。旗舰，适合长文与复杂问题 |
 | `kimi-k2.6` | 256K token | 通用备选，更省 |
 
 DeepSeek 预设 `deepseek-flash`（V4.1 Flash，快且省，支持思考模式）。预设失效就按服务端返回的报错提示，改
-`Replo/Core/Runtime/CoachProvider.swift` 一处即可。
-
-规格原稿写的是 `moonshot-v1-8k`，它已不在开放平台的可选列表里（现在给的是
-kimi-k3 / kimi-k2.7-code / kimi-k2.6 这一系），所以按规格「若失效按返回报错提示」
-的约定换成上面两个。三份文档全文约 8200 字，在这两个模型的上下文里都是零头。
+`Feral/Core/Runtime/CoachProvider.swift` 一处即可。
 
 换模型会立刻重新装配。联调时可以 `KIMI_MODEL=kimi-k2.6` 临时顶掉（只对 Kimi 生效），
 设置页会显示被顶掉的状态。
 
 推理档位：K3 与 DeepSeek 都支持请求顶层 `reasoning_effort`（`low` / `high` / `max`，Kimi 官方默认 `max`），
-这里**默认发 `high`**——教练的活是「先给结论、不超过 150 字」，满档推理收益有限却要等更久。
-DeepSeek 另外带思考模式开关 `thinking: {"type": "enabled"}`，思维链增量（`reasoning_content`）复用
-K3 的流式渲染链路（正文未到时，打字指示区先显示思考摘要）。**只给认这些字段的模型发**：K2.6 一个多余
-字段都不带。设置页的「模型」区块可以改档位（认 effort 的模型共用这一档，下一条消息就生效，不用重启）；
+这里**默认发 `high`**——日常对话满档推理收益有限却要等更久。DeepSeek 另外带思考模式开关
+`thinking: {"type": "enabled"}`，思维链增量（`reasoning_content`）复用 K3 的流式渲染链路
+（正文未到时，打字指示区先显示思考摘要）。**只给认这些字段的模型发**：K2.6 一个多余字段都不带。
+设置页的「模型」区块可以改档位（认 effort 的模型共用这一档，下一条消息就生效，不用重启）；
 联调时 `KIMI_REASONING_EFFORT=low` 仍能顶掉（只对 Kimi 生效），认不出的值退回默认。
 
-## 联调 LLM（不打真 Moonshot）
+## 联调 LLM（不打真服务端）
 
 `tools/mock-kimi/mock_kimi.py` 是 OpenAI 兼容的假服务，零依赖。**它必须回 SSE**：
 Swiftus 的 `chat()` 连非流式调用也走流式端点（请求体 `stream` 恒为 true），回普通 JSON
@@ -107,63 +98,46 @@ make run-mock-device MOCK_URL=http://192.168.x.x:8099/v1   # 终端 B
 `make lan-ip` 打印 Mac 的局域网地址。真机第一次跑要允许「本地网络」权限弹窗。
 
 App 侧靠环境变量改端点，默认值不动：`KIMI_BASE_URL` / `KIMI_MODEL`，**这条通道只对 Kimi
-生效**（选了 DeepSeek 时环境变量不顶任何东西，免得 mock 串到真服务）。教练设置页会显示
-当前端点，被改过还会挂一条橙色提示，免得以为在跟真 Moonshot 说话。端点被指到本机时，
+生效**（选了 DeepSeek 时环境变量不顶任何东西，免得 mock 串到真服务）。设置页会显示
+当前端点，被改过还会挂一条橙色提示，免得以为在跟真服务端说话。端点被指到本机时，
 钥匙串里没有 Key 会补一把占位 Key（假服务不校验 Key），干净模拟器也能直接跑。
 
-假服务的回话会把收到的东西回述一遍——三份文档在不在 system、周次和最近 7 天记录在不在
-user 前缀、历史几条——所以它同时是一份「发出去的到底是什么」的现场证据。
+假服务的回话会把收到的东西回述一遍——system 字数、历史几条、最后一句是什么——所以它同时是
+一份「发出去的到底是什么」的现场证据。
 
 ## 目录结构
 
 ```
-Replo/
-├── App/            应用入口与 TabView
+Feral/
+├── App/            应用入口
 ├── Core/
-│   ├── Models/     SwiftData 模型与容器工厂
-│   ├── Data/       种子数据：动作 / 重量表 / WOD / 导入器
-│   ├── Engine/     WeightEngine 规则引擎、LoadPlanner 配重、MovementSpec
-│   ├── Session/    今日计划（周节律）、训练草稿、连续失败统计、热身组
-│   ├── Wod/        WorkoutTimerModel 计时状态机（纯函数）、成绩回填草稿
-│   ├── Calendar/   MonthGrid 月视图格子
-│   ├── BodyWeight/ WeightStats 周平均与目标区间
-│   ├── Coach/      教练 system prompt（三份文档全文）与训练上下文拼接
-│   ├── Runtime/    Swiftus 上下文树 + 钥匙串凭据：ReploRuntime / KeychainCredentials / RuntimeStore
-│   └── Support/    通用小工具
-├── Features/       Today / SessionFlow / Calendar / Wod / Chat，一个 Tab 一个目录
+│   ├── Models/     SwiftData 模型与容器工厂（KimiChatMessage）
+│   ├── Coach/      system prompt、会话分组与当前会话记录
+│   ├── Markdown/   Markdown 分块解析
+│   ├── Runtime/    Swiftus 上下文树 + 钥匙串凭据：FeralRuntime / RuntimeStore
+│   └── Support/    日期格式化
+├── Features/Chat/  对话界面：消息流、输入条、设置、历史会话
 └── Resources/      Assets.xcassets、Info.plist（由 xcodegen 生成）
-ReploTests/         XCTest / swift-testing 用例
+FeralTests/         swift-testing 用例
 tools/mock-kimi/    LLM 联调用的假服务（Python 标准库，无依赖）
-docs/               规格与接入文档
+docs/               Swiftus 接入文档
 ```
-
-模块与落点：1 数据模型 + 种子 → `Core/Models` `Core/Data`；2 规则引擎 → `Core/Engine`；
-3 训练课流程 → `Features/SessionFlow`；4 WOD 计时器 → `Features/Wod`（状态机在 `Core/Wod`）；5 体重 + 日历 → `Features/Weight` `Features/Calendar`（网格与统计在 `Core/Calendar` `Core/BodyWeight`）；
-6 Kimi 教练 → `Features/Chat`（prompt 与上下文在 `Core/Coach`）；7 CloudKit 配置 → `ReploApp.swift` 的 `ModelContainer`。
 
 ## 已经定下来的决策
 
 | 项 | 取值 | 原因 |
 |---|---|---|
-| 部署目标 | iOS 17.0 | SwiftData / Swift Charts 的地板是 17，比 Swiftus 自己声明的 16 高 |
-| Swift 语言模式 | 5（`SWIFT_STRICT_CONCURRENCY: minimal`） | 规格与委托提示词写的是 Swift 5.9+；SwiftData + `@ContextTreeActor` 在 6 模式下会淹没在并发检查里 |
+| 部署目标 | iOS 17.0 | SwiftData 的地板是 17，比 Swiftus 自己声明的 16 高 |
+| Swift 语言模式 | 5（`SWIFT_STRICT_CONCURRENCY: minimal`） | SwiftData + `@ContextTreeActor` 在 6 模式下会淹没在并发检查里 |
 | Swiftus 引用方式 | 按需产品 `SwiftusCore` `SwiftusFoundation` `SwiftusCredentials` `SwiftusLLM` | 伞产品会连带 Yams/CYaml 第三方依赖，并把 `SwiftusTasks.Task` re-export 出来遮蔽 `_Concurrency.Task` |
-| 凭据来源 | 钥匙串（`KeychainCredentials` 实现 Swiftus 的 `Credentials`） | 早先是沙盒里的 JSON 文件，Key 明文躺在 Application Support；换钥匙串后注入点仍只有 `ReploRuntime.bootstrap` 一处 |
-| 运行时隔离 | `ReploRuntime`（`@ContextTreeActor`）持有上下文树，`RuntimeStore`（MainActor）只回写状态 | `Context` 及其成员都在框架的 global actor 上，视图层不能直接碰（见 docs/ios-接入指南.md 坑 ②） |
+| 凭据来源 | 钥匙串（`KeychainCredentials` 实现 Swiftus 的 `Credentials`） | Key 明文不落文件；注入点只有 `FeralRuntime.bootstrap` 一处 |
+| 运行时隔离 | `FeralRuntime`（`@ContextTreeActor`）持有上下文树，`RuntimeStore`（MainActor）只回写状态 | `Context` 及其成员都在框架的 global actor 上，视图层不能直接碰（见 docs/ios-接入指南.md 坑 ②） |
 | 包管理 | XcodeGen + SPM over SSH | 见下 |
-| 计划模板的周结构 | 一周 = 一个 `PlanWeek`，A/B 日动作合在一起 | 课型由 `Movement.pattern` 唯一决定；早先按「A、B 各存一条同周次 `PlanWeek`」实现，查 B 日动作永远查不到 |
-| 周次编号 | 从 0 数起，界面显示第 N+1 周 | 和 `ActivePlan.currentWeekIndex` 对齐；早先重量表按 1 起数，`week(_:)` 查不到当周，整周动作是空的 |
-| 引擎的动作类型 | 值类型 `MovementSpec`，不是 `@Model Movement` | 引擎保持纯函数，不 import SwiftData，调用方也不必为了算重量去 fetch 托管对象 |
-| 配重可行性 | 每侧对称的整数背包，只往上找替代重量 | 往下退等于变相减重，减重只走引擎的 deload 规则（见 `LoadPlanner.nearestLoadable`） |
-| 计划推进 | 今日页「这周练完了」按钮手动推进 | 四周表按自然周走，什么时候算一周完不猜；不塞进训练提交里，免得练一次跳一周 |
-| 重量文案 | 统一走 `WeightFormat.text` | `Text` 插值 `Double` 会按 locale 格式化，直接插值会显示成「80.000000kg」 |
-| 人工改重 | 只能改到「当前重量 + 类别步长」以内，超出要二次确认并把原因写进备注 | 规格 5.3：警示区不许越过步长人工加重；`LoadPlanner.nearestLoadable(upTo:)` 卡住上限 |
-| 周起点 | 显式周一起，不跟设备区域设置走 | 计划的节律是周一起；跟 `firstWeekday` 走会让月视图和体重周平均整体错位一天 |
 | 日期文案 | 统一走 `DateFormat`（zh_CN） | 系统是英文区域，`Date.formatted` 会渲染出「Aug 31」「Monday」 |
 
 ## 测试注意
 
-`ReploTests/TestStore.swift` 整个测试进程只建一个 `ModelContainer`，用例之间清数据而不重建容器。
+`FeralTests/TestStore.swift` 整个测试进程只建一个 `ModelContainer`，用例之间清数据而不重建容器。
 原因是实测（Xcode 26.5 / iOS 26.5 模拟器）：同一进程内每新建一个容器就往里写数据，SwiftData 会以
 `EXC_BREAKPOINT` 崩掉，XCTest 报成「Restarting after unexpected exit, crash, or test timeout」。
 新写用例请复用 `TestStore`，不要自己 `ModelContainer(...)`。

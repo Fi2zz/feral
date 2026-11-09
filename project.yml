@@ -1,4 +1,4 @@
-name: Replo
+name: Feral
 
 # 本机专属配置（签名团队等），不进仓库；缺失时 Makefile 的 generate 会先生成模板。
 include:
@@ -14,7 +14,7 @@ options:
 
 settings:
   base:
-    # SwiftData / Swift Charts 的地板是 iOS 17，比 Swiftus 自己声明的 16 高。
+    # SwiftData 的地板是 iOS 17，比 Swiftus 自己声明的 16 高。
     IPHONEOS_DEPLOYMENT_TARGET: "17.0"
     SWIFT_VERSION: "5.0"
     SWIFT_STRICT_CONCURRENCY: minimal
@@ -26,16 +26,13 @@ packages:
     # https 被墙时走 SSH：SPM 底层是 git，靠全局 `insteadOf` 把 https 重写成 ssh。
     url: ssh://git@github.com/Fi2zz/swiftus.git
     exactVersion: "0.1.6"
-  HorizonCalendar:
-    url: ssh://git@github.com/airbnb/HorizonCalendar.git
-    exactVersion: "2.0.0"
 
 targets:
-  Replo:
+  Feral:
     type: application
     platform: iOS
     sources:
-      - path: Replo
+      - path: Feral
     dependencies:
       # 只取按需产品，跳过伞产品 Swiftus（它会把 Yams/CYaml 和 SwiftusTasks.Task 一起带进来）。
       - package: Swiftus
@@ -46,12 +43,10 @@ targets:
         product: SwiftusCredentials
       - package: Swiftus
         product: SwiftusLLM
-      - package: HorizonCalendar
-        product: HorizonCalendar
     info:
-      path: Replo/Resources/Info.plist
+      path: Feral/Resources/Info.plist
       properties:
-        CFBundleDisplayName: Replo
+        CFBundleDisplayName: Feral
         CFBundleShortVersionString: $(MARKETING_VERSION)
         ITSAppUsesNonExemptEncryption: false
         # 真机联调要打 http://<Mac 局域网地址>:8099，ATS 默认拦明文 HTTP。
@@ -64,8 +59,8 @@ targets:
           - UIInterfaceOrientationPortrait
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.fi2zz.replo
-        PRODUCT_NAME: Replo
+        PRODUCT_BUNDLE_IDENTIFIER: com.fi2zz.feral
+        PRODUCT_NAME: Feral
         MARKETING_VERSION: 0.1.0
         CURRENT_PROJECT_VERSION: "1"
         GENERATE_INFOPLIST_FILE: YES
@@ -74,28 +69,28 @@ targets:
         CODE_SIGN_STYLE: Automatic
         TARGETED_DEVICE_FAMILY: "1"
 
-  ReploTests:
+  FeralTests:
     type: bundle.unit-test
     platform: iOS
     sources:
-      - path: ReploTests
+      - path: FeralTests
     dependencies:
-      - target: Replo
+      - target: Feral
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.fi2zz.replo.tests
+        PRODUCT_BUNDLE_IDENTIFIER: com.fi2zz.feral.tests
         GENERATE_INFOPLIST_FILE: YES
 
 schemes:
-  Replo:
+  Feral:
     build:
       targets:
-        Replo: all
-        ReploTests: [test]
+        Feral: all
+        FeralTests: [test]
     run:
       config: Debug
     test:
       config: Debug
       gatherCoverageData: true
       targets:
-        - ReploTests
+        - FeralTests

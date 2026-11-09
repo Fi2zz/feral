@@ -24,13 +24,6 @@ import sys
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-DOC_MARKERS = {
-    "训练计划": "完整训练与减脂计划",
-    "WOD 手册": "WOD 训练手册",
-    "动作说明": "动作说明文档",
-}
-
-
 class Handler(BaseHTTPRequestHandler):
     server_version = "mock-kimi/1"
 
@@ -72,16 +65,12 @@ class Handler(BaseHTTPRequestHandler):
         user = next((m.get("content", "") for m in reversed(messages) if m.get("role") == "user"), "")
         history = [m for m in messages if m.get("role") in ("user", "assistant")][:-1]
 
-        docs = [name for name, marker in DOC_MARKERS.items() if marker in system]
-        has_week = "【当前计划】" in user
-        has_recent = "【最近 7 天训练记录】" in user
         asked = user.split("\n")[-1][:60]
 
         lines = [
             "（mock）收到了。",
             f"reasoning_effort：{body.get('reasoning_effort', '（无）')}。",
-            f"system {len(system)} 字，三份文档：{'、'.join(docs) if docs else '没看到'}。",
-            f"user 前缀 {len(user)} 字，周次 {'✓' if has_week else '✗'}，最近 7 天记录 {'✓' if has_recent else '✗'}。",
+            f"system {len(system)} 字。",
             f"历史消息 {len(history)} 条。这句是：{asked}",
         ]
         return "\n".join(lines)

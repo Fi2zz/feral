@@ -1,4 +1,4 @@
-# Replo —— 生成工程、跑模拟器测试、装到真机。
+# Feral —— 生成工程、跑模拟器测试、装到真机。
 #
 #   make help          看这份清单
 #   make test          模拟器上跑全部用例
@@ -13,8 +13,8 @@ SHELL := /bin/bash
 # 管道要带出失败：xcodebuild | tail 5 那种写法否则永远返回 0，编译挂了也照样往下走。
 .SHELLFLAGS := -o pipefail -c
 
-SCHEME    := Replo
-BUNDLE_ID := com.fi2zz.replo
+SCHEME    := Feral
+BUNDLE_ID := com.fi2zz.feral
 CONFIG    ?= Debug
 SIM_NAME  ?= iPhone 17
 DERIVED   := .build/DerivedData
@@ -61,11 +61,11 @@ help: ## 列出所有目标
 	@grep -E '^[a-z-]+:.*?## .*$$' $(MAKEFILE_LIST) \
 		| awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-14s\033[0m %s\n", $$1, $$2}'
 
-generate: $(TEAM_YML) ## project.yml → Replo.xcodeproj（工程无变化时跳过，免得重生成冲掉 Xcode 里的状态）
+generate: $(TEAM_YML) ## project.yml → Feral.xcodeproj（工程无变化时跳过，免得重生成冲掉 Xcode 里的状态）
 	@mkdir -p .build
-	@{ shasum project.yml $(TEAM_YML); find Replo ReploTests -type f | sort; } > .build/manifest.new
+	@{ shasum project.yml $(TEAM_YML); find Feral FeralTests -type f | sort; } > .build/manifest.new
 	@if [ -f $(SCHEME).xcodeproj/project.pbxproj ] && cmp -s .build/manifest.new .build/manifest.cur; then \
-		echo '工程无变化，跳过 xcodegen（要强制重建：rm -rf Replo.xcodeproj 后再跑）'; \
+		echo '工程无变化，跳过 xcodegen（要强制重建：rm -rf Feral.xcodeproj 后再跑）'; \
 	else \
 		xcodegen generate && mv .build/manifest.new .build/manifest.cur; \
 	fi
@@ -73,10 +73,10 @@ generate: $(TEAM_YML) ## project.yml → Replo.xcodeproj（工程无变化时跳
 # 首次生成时把自动推断到的签名团队写进去；推断不到就留个注释模板。
 $(TEAM_YML):
 	@if [ -n '$(DEVELOPMENT_TEAM)' ]; then \
-		printf 'targets:\n  Replo:\n    settings:\n      base:\n        DEVELOPMENT_TEAM: %s\n' '$(DEVELOPMENT_TEAM)' > $(TEAM_YML); \
+		printf 'targets:\n  Feral:\n    settings:\n      base:\n        DEVELOPMENT_TEAM: %s\n' '$(DEVELOPMENT_TEAM)' > $(TEAM_YML); \
 		echo '已把签名团队 $(DEVELOPMENT_TEAM) 写进 $(TEAM_YML)（不进仓库）'; \
 	else \
-		printf '# 本机专属 XcodeGen 配置（不进仓库）：签名团队写这里，重新生成工程也丢不了\n# targets:\n#   Replo:\n#     settings:\n#       base:\n#         DEVELOPMENT_TEAM: XXXXXXXXXX\n{}\n' > $(TEAM_YML); \
+		printf '# 本机专属 XcodeGen 配置（不进仓库）：签名团队写这里，重新生成工程也丢不了\n# targets:\n#   Feral:\n#     settings:\n#       base:\n#         DEVELOPMENT_TEAM: XXXXXXXXXX\n{}\n' > $(TEAM_YML); \
 		echo '已生成 $(TEAM_YML) 模板，建议填入签名团队'; \
 	fi
 
