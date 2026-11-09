@@ -50,12 +50,13 @@ struct CoachProviderTests {
         #expect(CoachProvider.openCodeGo.fallbackModel.id == "deepseek-v4.1-flash")
     }
 
-    @Test("只有明确支持视觉的模型才收图片")
-    func imageCapability() {
+    @Test("按 models.dev 的视觉能力标记模型")
+    func imageCapability() throws {
+        #expect(CoachProvider.kimi.models.allSatisfy { $0.acceptsImages })
         #expect(CoachProvider.deepseek.models[0].acceptsImages)
-        #expect(CoachProvider.openCodeGo.models[0].acceptsImages)
-        #expect(CoachProvider.kimi.models.allSatisfy { !$0.acceptsImages })
-        #expect(CoachProvider.openCodeGo.models.dropFirst().allSatisfy { !$0.acceptsImages })
+        let glm = try #require(CoachProvider.openCodeGo.models.first { $0.id == "glm-5.3" })
+        #expect(glm.acceptsImages == false)
+        #expect(CoachProvider.openCodeGo.models.filter { $0.id != "glm-5.3" }.allSatisfy { $0.acceptsImages })
     }
 
     @Test("OpenCode Go 每个请求带会话头，其他提供商不带")

@@ -69,8 +69,19 @@ extension CoachProviderProfile {
         keychainService: "com.fi2zz.feral.moonshot",
         modelDefaultsKey: "feral.kimi.model",
         models: [
-            CoachModel(id: "kimi-k3", title: "Kimi K3", note: "旗舰，1M 上下文，适合长文与复杂问题", acceptsReasoningEffort: true),
-            CoachModel(id: "kimi-k2.6", title: "Kimi K2.6", note: "通用，256K 上下文，够用且更省"),
+            CoachModel(
+                id: "kimi-k3",
+                title: "Kimi K3",
+                note: "旗舰，1M 上下文，支持图片",
+                acceptsReasoningEffort: true,
+                acceptsImages: true
+            ),
+            CoachModel(
+                id: "kimi-k2.6",
+                title: "Kimi K2.6",
+                note: "通用，256K 上下文，支持图片",
+                acceptsImages: true
+            ),
         ]
     )
 
@@ -113,8 +124,9 @@ extension CoachProviderProfile {
             CoachModel(
                 id: "kimi-k3.1-pro",
                 title: "Kimi K3.1 Pro",
-                note: "旗舰，长上下文",
-                acceptsReasoningEffort: true
+                note: "旗舰，长上下文，支持图片",
+                acceptsReasoningEffort: true,
+                acceptsImages: true
             ),
             CoachModel(
                 id: "glm-5.3",
@@ -122,9 +134,24 @@ extension CoachProviderProfile {
                 note: "通用",
                 acceptsReasoningEffort: true
             ),
-            CoachModel(id: "qwen3.8-max", title: "Qwen3.8 Max", note: "长上下文备选"),
-            CoachModel(id: "minimax-m3", title: "MiniMax-M3", note: "性价比"),
-            CoachModel(id: "mimo-v2.6-flash", title: "MiMo-V2.6-Flash", note: "极低成本"),
+            CoachModel(
+                id: "qwen3.8-max",
+                title: "Qwen3.8 Max",
+                note: "长上下文备选，支持图片",
+                acceptsImages: true
+            ),
+            CoachModel(
+                id: "minimax-m3",
+                title: "MiniMax-M3",
+                note: "性价比，支持图片",
+                acceptsImages: true
+            ),
+            CoachModel(
+                id: "mimo-v2.6-flash",
+                title: "MiMo-V2.6-Flash",
+                note: "极低成本，支持图片",
+                acceptsImages: true
+            ),
         ]
     )
 }

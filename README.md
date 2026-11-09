@@ -72,8 +72,8 @@ service `com.fi2zz.feral.moonshot`、account `KIMI_API_KEY`；DeepSeek 是
 
 | 模型 | 上下文 | 说明 |
 |---|---|---|
-| `kimi-k3` | 1M token | 默认。旗舰，适合长文与复杂问题 |
-| `kimi-k2.6` | 256K token | 通用备选，更省 |
+| `kimi-k3` | 1M token | 默认。旗舰，支持图片 |
+| `kimi-k2.6` | 256K token | 通用备选，更省，支持图片 |
 
 DeepSeek 预设 `deepseek-flash`（V4.1 Flash，快且省，支持思考模式）。预设失效就按服务端返回的报错提示，改
 `Feral/Core/Runtime/CoachProvider.swift` 一处即可。
@@ -81,14 +81,14 @@ DeepSeek 预设 `deepseek-flash`（V4.1 Flash，快且省，支持思考模式�
 OpenCode Go 走订阅制网关 `https://opencode.ai/zen/go/v1`，只列了走 Chat Completions 的模型
 （GPT / Claude / Gemini / Grok 走 Responses 或 Messages 协议，当前 wire 层不支持）：
 
-| 模型 | 说明 | reasoning_effort |
-|---|---|---|
-| `deepseek-v4.1-flash` | 默认，快且省 | 支持 |
-| `kimi-k3.1-pro` | 旗舰，长上下文 | 支持 |
-| `glm-5.3` | 通用 | 支持 |
-| `qwen3.8-max` | 长上下文备选 | 不发 |
-| `minimax-m3` | 性价比 | 不发 |
-| `mimo-v2.6-flash` | 极低成本 | 不发 |
+| 模型 | 说明 | reasoning_effort | 图片 |
+|---|---|---|---|
+| `deepseek-v4.1-flash` | 默认，快且省 | 支持 | ✅ |
+| `kimi-k3.1-pro` | 旗舰，长上下文 | 支持 | ✅ |
+| `glm-5.3` | 通用 | 支持 | ❌ |
+| `qwen3.8-max` | 长上下文备选 | 不发 | ✅ |
+| `minimax-m3` | 性价比 | 不发 | ✅ |
+| `mimo-v2.6-flash` | 极低成本 | 不发 | ✅ |
 
 OpenCode Go 要求每个会话带稳定的 `x-opencode-session`，这里的取值就是当前会话 id；请求的
 `User-Agent` 统一是 `Feral/0.1.0`（满足网关的客户端标识要求）。
