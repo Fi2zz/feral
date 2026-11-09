@@ -2,7 +2,6 @@ import Foundation
 import SwiftusCore
 import SwiftusCredentials
 import SwiftusLLM
-import SwiftusSearch
 
 /// 上下文树的持有者。`Context` 与它的成员都在 `@ContextTreeActor` 上，
 /// 视图层只能经 `RuntimeStore` 跨 actor 调用（docs/ios-接入指南.md 坑 ②）。
@@ -72,20 +71,13 @@ final class FeralRuntime {
         )
     }
 
-    /// 用已保存的搜索 Key 跑一次联网搜索；DuckDuckGo 永远免 Key 兜底。
-    func search(_ query: String, limit: Int = 5) async throws -> [SearchResult] {
-        let credentials = InMemoryCredentials(initial: SearchKeyStore.savedKeys())
-        defer { credentials.close() }
-        let built = buildSearchProviders(
-            order: kDefaultSearchOrder,
-            credentials: credentials,
-            session: .shared
+    /// Exa / Parallel MCP：先搜，再把前两条结果抓成正文。抓取失败不影响搜索结果。
+    func search(_ query: String, limit: Int = 5, sessionID: UUID) async throws -> SearchBundle {
+        let gateway = SearchGateway(
+            exaKey: SearchKeyStore.savedKey(account: SearchKeyStore.exaKey),
+            parallelKey: SearchKeyStore.savedKey(account: SearchKeyStore.parallelKey)
         )
-        let service = SearchService(statuses: built.statuses)
-        for provider in built.providers {
-            service.register(provider)
-        }
-        return try await service.search(query, limit: limit)
+        return try await gateway.search(query, limit: limit, sessionID: sessionID)
     }
 
     private func chatRequest(

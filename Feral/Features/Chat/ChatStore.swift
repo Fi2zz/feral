@@ -2,7 +2,6 @@ import Foundation
 import SwiftData
 import SwiftusCredentials
 import SwiftusLLM
-import SwiftusSearch
 import Observation
 
 /// 对话状态：消息、流式草稿、发送中、错误。对话只读，模型不写任何数据。
@@ -31,7 +30,7 @@ final class ChatStore {
     private let modelContext: ModelContext
     private let runtime: RuntimeStore
     /// 预搜索入口；测试可注入固定结果。
-    private let search: @MainActor (String) async throws -> [SearchResult]
+    private let search: @MainActor (String, UUID) async throws -> SearchBundle
     private let defaults: UserDefaults
     /// 全量消息。列表要跨会话，界面只要当前那段，所以两份都留着，
     /// 免得每来一条消息都要重新查一遍库。
@@ -42,12 +41,14 @@ final class ChatStore {
     init(
         modelContext: ModelContext,
         runtime: RuntimeStore,
-        search: (@MainActor (String) async throws -> [SearchResult])? = nil,
+        search: (@MainActor (String, UUID) async throws -> SearchBundle)? = nil,
         defaults: UserDefaults = .standard
     ) {
         self.modelContext = modelContext
         self.runtime = runtime
-        self.search = search ?? { query in try await runtime.search(query) }
+        self.search = search ?? { query, sessionID in
+            try await runtime.search(query, sessionID: sessionID)
+        }
         self.defaults = defaults
         self.conversationID = KimiConversationStore.current(in: defaults)
     }
@@ -112,11 +113,11 @@ final class ChatStore {
         isSending = true
         failure = nil
 
-        var searchResults: [SearchResult] = []
+        var searchBundle = SearchBundle.empty
         if searchEnabled, !text.isEmpty {
             isSearching = true
             do {
-                searchResults = try await search(text)
+                searchBundle = try await search(text, conversationID)
             } catch {
                 failure = "联网搜索失败：\(ErrorText.reason(error))（已不带搜索结果继续）"
             }
@@ -126,7 +127,12 @@ final class ChatStore {
         // 先取历史再记录：这一句要拼进前缀，不能同时又当历史发一遍。
         let history = recentTurns()
         record(role: .user, content: text, attachments: attachments)
-        let prompt = Self.prompt(for: text, attachments: attachments, searchResults: searchResults)
+        let prompt = Self.prompt(
+            for: text,
+            attachments: attachments,
+            searchResults: searchBundle.hits,
+            pages: searchBundle.pages
+        )
         let images = attachments.compactMap(\.llmImage)
         streamingText = ""
         streamingReasoning = ""
@@ -136,7 +142,7 @@ final class ChatStore {
                 history: history,
                 question: prompt,
                 images: images,
-                includesSearchResults: !searchResults.isEmpty
+                includesSearchResults: !searchBundle.isEmpty
             )
         }
         inFlight = task
@@ -237,11 +243,12 @@ final class ChatStore {
         conversations = ConversationLog.summaries(from: allMessages)
     }
 
-    /// 实际发给模型的 user 文本：用户原话 + 文本附件 + 搜索结果。
+    /// 实际发给模型的 user 文本：用户原话 + 文本附件 + 搜索结果 + 抓回的正文。
     static func prompt(
         for text: String,
         attachments: [PendingAttachment],
-        searchResults: [SearchResult] = []
+        searchResults: [SearchHit] = [],
+        pages: [FetchedPage] = []
     ) -> String {
         var blocks: [String] = []
         if !text.isEmpty { blocks.append(text) }
@@ -251,6 +258,9 @@ final class ChatStore {
         }
         if !searchResults.isEmpty {
             blocks.append(SearchPrompt.resultsBlock(searchResults))
+        }
+        if !pages.isEmpty {
+            blocks.append(SearchPrompt.pagesBlock(pages))
         }
         if blocks.isEmpty {
             return attachments.contains(where: \.isImage) ? "请描述图片内容。" : "请阅读附件内容。"

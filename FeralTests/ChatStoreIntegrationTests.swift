@@ -1,5 +1,4 @@
 import Foundation
-import SwiftusSearch
 import Testing
 
 @testable import Feral
@@ -160,9 +159,12 @@ struct ChatStoreIntegrationTests {
         let store = ChatStore(
             modelContext: TestStore.context,
             runtime: runtimeStore,
-            search: { query in
+            search: { query, _ in
                 #expect(query == "最近有什么新闻")
-                return [SearchResult(title: "标题", url: "https://example.com", snippet: "摘要")]
+                return SearchBundle(
+                    hits: [SearchHit(title: "标题", url: "https://example.com", snippet: "摘要")],
+                    pages: []
+                )
             },
             defaults: defaults
         )

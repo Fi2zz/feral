@@ -43,8 +43,6 @@ targets:
         product: SwiftusCredentials
       - package: Swiftus
         product: SwiftusLLM
-      - package: Swiftus
-        product: SwiftusSearch
     info:
       path: Feral/Resources/Info.plist
       properties:

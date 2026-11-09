@@ -2,7 +2,6 @@ import Foundation
 import SwiftUI
 import SwiftusCredentials
 import SwiftusLLM
-import SwiftusSearch
 
 /// 视图侧唯一能碰运行时的入口：装配在 `ContextTreeActor` 上做，
 /// 状态回写留在 MainActor。`Task` 写全名是防将来引入伞产品时被 `SwiftusTasks.Task` 遮蔽。
@@ -95,11 +94,11 @@ final class RuntimeStore {
     }
 
     /// 联网搜索。给 ChatStore 在发送前拼上下文用。
-    func search(_ query: String, limit: Int = 5) async throws -> [SearchResult] {
+    func search(_ query: String, limit: Int = 5, sessionID: UUID) async throws -> SearchBundle {
         guard let runtime else {
             throw RuntimeError.notBootstrapped
         }
-        return try await runtime.search(query, limit: limit)
+        return try await runtime.search(query, limit: limit, sessionID: sessionID)
     }
 
     enum RuntimeError: LocalizedError {

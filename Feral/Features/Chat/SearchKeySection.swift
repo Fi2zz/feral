@@ -4,13 +4,12 @@ import SwiftUI
 struct SearchKeySection: View {
     var body: some View {
         Section {
-            SearchKeyRow(title: "Tavily", account: SearchKeyStore.tavilyKey)
             SearchKeyRow(title: "Exa", account: SearchKeyStore.exaKey)
-            SearchKeyRow(title: "Brave", account: SearchKeyStore.braveKey)
+            SearchKeyRow(title: "Parallel", account: SearchKeyStore.parallelKey)
         } header: {
             Text("智能搜索")
         } footer: {
-            Text("按 Tavily → Exa → Brave 的顺序使用；都没填时用 DuckDuckGo 免 Key 兜底。Key 只存钥匙串。")
+            Text("Exa 优先，空结果或失败时回退 Parallel。不填 Key 走免 Key，具体额度以服务端为准；Key 只存钥匙串。")
         }
     }
 }

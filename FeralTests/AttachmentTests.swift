@@ -1,5 +1,4 @@
 import Foundation
-import SwiftusSearch
 import Testing
 import UIKit
 
@@ -96,7 +95,7 @@ struct AttachmentPromptTests {
     @Test("搜索结果包成 <search_results> 并附链接")
     func searchResultsBlock() {
         let block = SearchPrompt.resultsBlock([
-            SearchResult(title: "标题", url: "https://example.com", snippet: "摘要"),
+            SearchHit(title: "标题", url: "https://example.com", snippet: "摘要"),
         ])
 
         #expect(block.contains("<search_results>"))
@@ -109,7 +108,7 @@ struct AttachmentPromptTests {
         let prompt = ChatStore.prompt(
             for: "总结一下",
             attachments: [.textFile(name: "a.md", text: "# hi")],
-            searchResults: [SearchResult(title: "标题", url: "https://example.com", snippet: "摘要")]
+            searchResults: [SearchHit(title: "标题", url: "https://example.com", snippet: "摘要")]
         )
 
         #expect(prompt.contains("<file name=\"a.md\">"))
