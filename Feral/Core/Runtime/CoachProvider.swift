@@ -5,14 +5,16 @@ import Foundation
 enum CoachProvider: String, CaseIterable, Identifiable, Sendable {
     case kimi
     case deepseek
+    case openCodeGo = "opencode-go"
 
     var id: String { rawValue }
 
-    // REASON: 静态映射表 —— 提供商元数据天然是一张表，一处说清两家差异，比散开的 switch 易读。
+    // REASON: 静态映射表 —— 提供商元数据天然是一张表，一处说清几家差异，比散开的 switch 易读。
     var profile: CoachProviderProfile {
         switch self {
         case .kimi: .kimi
         case .deepseek: .deepseek
+        case .openCodeGo: .openCodeGo
         }
     }
 
@@ -72,6 +74,40 @@ extension CoachProviderProfile {
                 acceptsReasoningEffort: true,
                 acceptsThinkingToggle: true
             ),
+        ]
+    )
+
+    static let openCodeGo = CoachProviderProfile(
+        title: "OpenCode Go",
+        keyConsoleHint: "去 opencode.ai/console 订阅 Go 后复制 API Key。",
+        defaultBaseUrl: "https://opencode.ai/zen/go/v1",
+        credentialKey: "OPENCODE_API_KEY",
+        keychainService: "com.fi2zz.feral.opencode-go",
+        modelDefaultsKey: "feral.opencode-go.model",
+        models: [
+            // 只列走 /chat/completions 的模型：当前 wire 层是 OpenAI Chat Completions，
+            // Go 上 GPT / Claude / Gemini / Grok 走 Responses 或 Messages 协议，先不列。
+            CoachModel(
+                id: "deepseek-v4.1-flash",
+                title: "DeepSeek V4.1 Flash",
+                note: "默认，快且省",
+                acceptsReasoningEffort: true
+            ),
+            CoachModel(
+                id: "kimi-k3.1-pro",
+                title: "Kimi K3.1 Pro",
+                note: "旗舰，长上下文",
+                acceptsReasoningEffort: true
+            ),
+            CoachModel(
+                id: "glm-5.3",
+                title: "GLM-5.3",
+                note: "通用",
+                acceptsReasoningEffort: true
+            ),
+            CoachModel(id: "qwen3.8-max", title: "Qwen3.8 Max", note: "长上下文备选"),
+            CoachModel(id: "minimax-m3", title: "MiniMax-M3", note: "性价比"),
+            CoachModel(id: "mimo-v2.6-flash", title: "MiMo-V2.6-Flash", note: "极低成本"),
         ]
     )
 }

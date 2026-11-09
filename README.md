@@ -1,7 +1,7 @@
 # Feral
 
 一个纯对话的 iOS App。SwiftUI + SwiftData + CloudKit 私有库同步，
-对话模型（Kimi / DeepSeek 可选）经 [Swiftus](https://github.com/Fi2zz/swiftus) 的
+对话模型（Kimi / DeepSeek / OpenCode Go 可选）经 [Swiftus](https://github.com/Fi2zz/swiftus) 的
 OpenAI 兼容 wire 层调用。
 
 当前只有对话一个功能：多会话、流式输出、Markdown 渲染、停止生成、Key 存钥匙串。
@@ -35,9 +35,10 @@ make run           # 编译 → 装到已连接的手机 → 启动
 
 ## 选提供商、填 API Key
 
-打开 App，点右上角的钥匙图标：先选提供商（Kimi / DeepSeek），
+打开 App，点右上角的钥匙图标：先选提供商（Kimi / DeepSeek / OpenCode Go），
 再在这家自己的 Key 区块里粘贴 `sk-…` 点保存。各家的 Key 分别存钥匙串（Kimi 是
-service `com.fi2zz.feral.moonshot`、account `KIMI_API_KEY`，DeepSeek 同理），不落文件、不进仓库；
+service `com.fi2zz.feral.moonshot`、account `KIMI_API_KEY`；DeepSeek 是
+`com.fi2zz.feral.deepseek`；OpenCode Go 是 `com.fi2zz.feral.opencode-go`），不落文件、不进仓库；
 保存后运行时立刻重新装配，状态行应该从「装配失败：缺少凭据」变成「已就绪」。同一页也能清除已保存的 Key。
 
 对话只读：不传 tools，模型没有写数据的手段。发不出去时输入框上方会红字说明原因，不静默失败。
@@ -64,13 +65,26 @@ service `com.fi2zz.feral.moonshot`、account `KIMI_API_KEY`，DeepSeek 同理）
 DeepSeek 预设 `deepseek-flash`（V4.1 Flash，快且省，支持思考模式）。预设失效就按服务端返回的报错提示，改
 `Feral/Core/Runtime/CoachProvider.swift` 一处即可。
 
+OpenCode Go 走订阅制网关 `https://opencode.ai/zen/go/v1`，只列了走 Chat Completions 的模型
+（GPT / Claude / Gemini / Grok 走 Responses 或 Messages 协议，当前 wire 层不支持）：
+
+| 模型 | 说明 | reasoning_effort |
+|---|---|---|
+| `deepseek-v4.1-flash` | 默认，快且省 | 支持 |
+| `kimi-k3.1-pro` | 旗舰，长上下文 | 支持 |
+| `glm-5.3` | 通用 | 支持 |
+| `qwen3.8-max` | 长上下文备选 | 不发 |
+| `minimax-m3` | 性价比 | 不发 |
+| `mimo-v2.6-flash` | 极低成本 | 不发 |
+
 换模型会立刻重新装配。联调时可以 `KIMI_MODEL=kimi-k2.6` 临时顶掉（只对 Kimi 生效），
 设置页会显示被顶掉的状态。
 
-推理档位：K3 与 DeepSeek 都支持请求顶层 `reasoning_effort`（`low` / `high` / `max`，Kimi 官方默认 `max`），
-这里**默认发 `high`**——日常对话满档推理收益有限却要等更久。DeepSeek 另外带思考模式开关
-`thinking: {"type": "enabled"}`，思维链增量（`reasoning_content`）复用 K3 的流式渲染链路
-（正文未到时，打字指示区先显示思考摘要）。**只给认这些字段的模型发**：K2.6 一个多余字段都不带。
+推理档位：K3、DeepSeek 与 OpenCode Go 上认这个参数的模型都支持请求顶层 `reasoning_effort`
+（`low` / `high` / `max`，Kimi 官方默认 `max`），这里**默认发 `high`**——日常对话满档推理收益有限
+却要等更久。DeepSeek 另外带思考模式开关 `thinking: {"type": "enabled"}`，思维链增量
+（`reasoning_content`）复用 K3 的流式渲染链路（正文未到时，打字指示区先显示思考摘要）。
+**只给认这些字段的模型发**：K2.6、Qwen、MiniMax、MiMo 一个多余字段都不带。
 设置页的「模型」区块可以改档位（认 effort 的模型共用这一档，下一条消息就生效，不用重启）；
 联调时 `KIMI_REASONING_EFFORT=low` 仍能顶掉（只对 Kimi 生效），认不出的值退回默认。
 

@@ -5,9 +5,9 @@ import Testing
 
 @Suite("提供商与模型选择", .serialized)
 struct CoachProviderTests {
-    @Test("提供商就两家：Kimi 与 DeepSeek")
-    func offersTwoProviders() {
-        #expect(CoachProvider.allCases == [.kimi, .deepseek])
+    @Test("提供商三家：Kimi、DeepSeek 与 OpenCode Go")
+    func offersThreeProviders() {
+        #expect(CoachProvider.allCases == [.kimi, .deepseek, .openCodeGo])
     }
 
     @Test("没选过的时候用 Kimi")
@@ -27,10 +27,38 @@ struct CoachProviderTests {
         #expect(CoachProviderStore.selected(in: defaults) == .kimi)
     }
 
-    @Test("两家预设模型清单：防手滑改错 ID")
+    @Test("三家预设模型清单：防手滑改错 ID")
     func modelCatalog() {
         #expect(CoachProvider.kimi.models.map(\.id) == ["kimi-k3", "kimi-k2.6"])
         #expect(CoachProvider.deepseek.models.map(\.id) == ["deepseek-flash"])
+        #expect(CoachProvider.openCodeGo.models.map(\.id) == [
+            "deepseek-v4.1-flash",
+            "kimi-k3.1-pro",
+            "glm-5.3",
+            "qwen3.8-max",
+            "minimax-m3",
+            "mimo-v2.6-flash",
+        ])
+    }
+
+    @Test("OpenCode Go 的端点、凭据与模型默认值")
+    func openCodeGoProfile() {
+        #expect(CoachProvider.openCodeGo.title == "OpenCode Go")
+        #expect(CoachProvider.openCodeGo.defaultBaseUrl == "https://opencode.ai/zen/go/v1")
+        #expect(CoachProvider.openCodeGo.credentialKey == "OPENCODE_API_KEY")
+        #expect(CoachProvider.openCodeGo.modelDefaultsKey == "feral.opencode-go.model")
+        #expect(CoachProvider.openCodeGo.fallbackModel.id == "deepseek-v4.1-flash")
+    }
+
+    @Test("OpenCode Go 每个提供商各记模型，互不干扰")
+    func openCodeGoModelSelection() throws {
+        let defaults = try isolated()
+        #expect(CoachModelStore.selected(provider: .openCodeGo, in: defaults).id == "deepseek-v4.1-flash")
+
+        CoachModelStore.save(CoachProvider.openCodeGo.models[1], provider: .openCodeGo, to: defaults)
+
+        #expect(CoachModelStore.selected(provider: .openCodeGo, in: defaults).id == "kimi-k3.1-pro")
+        #expect(CoachModelStore.selected(provider: .kimi, in: defaults).id == "kimi-k3", "别家的选择不受影响")
     }
 
     @Test("每个提供商各自记模型，互不干扰")
