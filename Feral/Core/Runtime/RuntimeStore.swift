@@ -2,6 +2,7 @@ import Foundation
 import SwiftUI
 import SwiftusCredentials
 import SwiftusLLM
+import SwiftusSearch
 
 /// 视图侧唯一能碰运行时的入口：装配在 `ContextTreeActor` 上做，
 /// 状态回写留在 MainActor。`Task` 写全名是防将来引入伞产品时被 `SwiftusTasks.Task` 遮蔽。
@@ -51,8 +52,20 @@ final class RuntimeStore {
     }
 
     /// 问一句。运行时装配失败、Key 缺失都原样抛给界面，不静默吞掉。
-    func ask(question: String, conversation: [LlmMessage], sessionID: UUID) async throws -> String {
-        let stream = try await askStream(question: question, conversation: conversation, sessionID: sessionID)
+    func ask(
+        question: String,
+        conversation: [LlmMessage],
+        sessionID: UUID,
+        images: [LlmImage] = [],
+        includesSearchResults: Bool = false
+    ) async throws -> String {
+        let stream = try await askStream(
+            question: question,
+            conversation: conversation,
+            sessionID: sessionID,
+            images: images,
+            includesSearchResults: includesSearchResults
+        )
         var answer = ""
         for try await event in stream {
             if case .textDelta(let delta) = event { answer += delta }
@@ -65,17 +78,28 @@ final class RuntimeStore {
     func askStream(
         question: String,
         conversation: [LlmMessage],
-        sessionID: UUID
+        sessionID: UUID,
+        images: [LlmImage] = [],
+        includesSearchResults: Bool = false
     ) async throws -> AsyncThrowingStream<LlmStreamEvent, Error> {
         guard let runtime else {
             throw RuntimeError.notBootstrapped
         }
         return await runtime.askStream(
-            system: ChatPrompt.system(today: Date()),
+            system: ChatPrompt.system(today: Date(), includesSearchResults: includesSearchResults),
             conversation: conversation,
             question: question,
+            images: images,
             headers: CoachLlmConfig.provider.sessionHeaders(sessionID: sessionID)
         )
+    }
+
+    /// 联网搜索。给 ChatStore 在发送前拼上下文用。
+    func search(_ query: String, limit: Int = 5) async throws -> [SearchResult] {
+        guard let runtime else {
+            throw RuntimeError.notBootstrapped
+        }
+        return try await runtime.search(query, limit: limit)
     }
 
     enum RuntimeError: LocalizedError {

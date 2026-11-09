@@ -67,12 +67,14 @@ class Handler(BaseHTTPRequestHandler):
 
         asked = user.split("\n")[-1][:60]
         session = self.headers.get("x-opencode-session") or "（无）"
+        has_search = "<search_results>" in user
 
         lines = [
             "（mock）收到了。",
             f"reasoning_effort：{body.get('reasoning_effort', '（无）')}。",
             f"system {len(system)} 字。",
             f"x-opencode-session：{session}。",
+            f"搜索 {'✓' if has_search else '✗'}。",
             f"历史消息 {len(history)} 条。这句是：{asked}",
         ]
         return "\n".join(lines)

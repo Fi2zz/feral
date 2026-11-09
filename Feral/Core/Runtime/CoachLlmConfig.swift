@@ -9,6 +9,11 @@ enum CoachLlmConfig {
         CoachProviderStore.selected()
     }
 
+    /// 设置页当前点选的模型（不跟随联调环境变量，界面能力位以用户点选为准）。
+    static var selectedModel: CoachModel {
+        CoachModelStore.selected(provider: provider)
+    }
+
     static var baseUrl: String {
         overridden("BASE_URL") ?? provider.defaultBaseUrl
     }

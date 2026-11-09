@@ -50,6 +50,14 @@ struct CoachProviderTests {
         #expect(CoachProvider.openCodeGo.fallbackModel.id == "deepseek-v4.1-flash")
     }
 
+    @Test("只有明确支持视觉的模型才收图片")
+    func imageCapability() {
+        #expect(CoachProvider.deepseek.models[0].acceptsImages)
+        #expect(CoachProvider.openCodeGo.models[0].acceptsImages)
+        #expect(CoachProvider.kimi.models.allSatisfy { !$0.acceptsImages })
+        #expect(CoachProvider.openCodeGo.models.dropFirst().allSatisfy { !$0.acceptsImages })
+    }
+
     @Test("OpenCode Go 每个请求带会话头，其他提供商不带")
     func sessionHeaders() {
         let id = UUID()

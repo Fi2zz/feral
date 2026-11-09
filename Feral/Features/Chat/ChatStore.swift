@@ -2,6 +2,7 @@ import Foundation
 import SwiftData
 import SwiftusCredentials
 import SwiftusLLM
+import SwiftusSearch
 import Observation
 
 /// 对话状态：消息、流式草稿、发送中、错误。对话只读，模型不写任何数据。
@@ -13,6 +14,8 @@ final class ChatStore {
     /// 历史会话列表（含当前这条），按最近活动倒序。
     private(set) var conversations: [ConversationSummary] = []
     private(set) var isSending = false
+    /// 正在联网搜索（发送前的预搜索阶段）。
+    private(set) var isSearching = false
     /// 正在流式接收的正文，界面拿它当「正在说的那句」渲染。
     private(set) var streamingText = ""
     /// 正在流式接收的思考过程（K3 会先想再答）。
@@ -27,6 +30,8 @@ final class ChatStore {
 
     private let modelContext: ModelContext
     private let runtime: RuntimeStore
+    /// 预搜索入口；测试可注入固定结果。
+    private let search: @MainActor (String) async throws -> [SearchResult]
     private let defaults: UserDefaults
     /// 全量消息。列表要跨会话，界面只要当前那段，所以两份都留着，
     /// 免得每来一条消息都要重新查一遍库。
@@ -37,10 +42,12 @@ final class ChatStore {
     init(
         modelContext: ModelContext,
         runtime: RuntimeStore,
+        search: (@MainActor (String) async throws -> [SearchResult])? = nil,
         defaults: UserDefaults = .standard
     ) {
         self.modelContext = modelContext
         self.runtime = runtime
+        self.search = search ?? { query in try await runtime.search(query) }
         self.defaults = defaults
         self.conversationID = KimiConversationStore.current(in: defaults)
     }
@@ -95,18 +102,43 @@ final class ChatStore {
     }
 
     /// 发一句。流式接收：先建一条空的助手消息占位，增量往里填，收完落库。
-    func send(_ question: String) async {
+    func send(
+        _ question: String,
+        attachments: [PendingAttachment] = [],
+        searchEnabled: Bool = false
+    ) async {
         let text = question.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !text.isEmpty, !isSending else { return }
-        // 先取历史再记录：这一句要拼进前缀，不能同时又当历史发一遍。
-        let history = recentTurns()
-        record(role: .user, content: text)
+        guard !text.isEmpty || !attachments.isEmpty, !isSending else { return }
         isSending = true
         failure = nil
+
+        var searchResults: [SearchResult] = []
+        if searchEnabled, !text.isEmpty {
+            isSearching = true
+            do {
+                searchResults = try await search(text)
+            } catch {
+                failure = "联网搜索失败：\(ErrorText.reason(error))（已不带搜索结果继续）"
+            }
+            isSearching = false
+        }
+
+        // 先取历史再记录：这一句要拼进前缀，不能同时又当历史发一遍。
+        let history = recentTurns()
+        record(role: .user, content: text, attachments: attachments)
+        let prompt = Self.prompt(for: text, attachments: attachments, searchResults: searchResults)
+        let images = attachments.compactMap(\.llmImage)
         streamingText = ""
         streamingReasoning = ""
 
-        let task = _Concurrency.Task { await receive(history: history, question: text) }
+        let task = _Concurrency.Task {
+            await receive(
+                history: history,
+                question: prompt,
+                images: images,
+                includesSearchResults: !searchResults.isEmpty
+            )
+        }
         inFlight = task
         await task.value
         inFlight = nil
@@ -118,13 +150,20 @@ final class ChatStore {
     }
 
     /// 收流：正文增量拼成答案，思考增量单独走，收完写一条助手消息。
-    private func receive(history: [LlmMessage], question: String) async {
+    private func receive(
+        history: [LlmMessage],
+        question: String,
+        images: [LlmImage],
+        includesSearchResults: Bool
+    ) async {
         defer { clearStreamingState() }
         do {
             let stream = try await runtime.askStream(
                 question: question,
                 conversation: history,
-                sessionID: conversationID
+                sessionID: conversationID,
+                images: images,
+                includesSearchResults: includesSearchResults
             )
             try await consume(stream)
             commitAnswer()
@@ -182,12 +221,40 @@ final class ChatStore {
             .map { LlmMessage($0.role == .user ? "user" : "assistant", $0.content) }
     }
 
-    private func record(role: ChatRole, content: String) {
+    private func record(
+        role: ChatRole,
+        content: String,
+        attachments: [PendingAttachment] = []
+    ) {
         let message = KimiChatMessage(role: role, content: content, conversationID: conversationID)
         modelContext.insert(message)
+        if !attachments.isEmpty {
+            AttachmentStore.persist(attachments, on: message, in: modelContext)
+        }
         try? modelContext.save()
         messages.append(message)
         allMessages.append(message)
         conversations = ConversationLog.summaries(from: allMessages)
+    }
+
+    /// 实际发给模型的 user 文本：用户原话 + 文本附件 + 搜索结果。
+    static func prompt(
+        for text: String,
+        attachments: [PendingAttachment],
+        searchResults: [SearchResult] = []
+    ) -> String {
+        var blocks: [String] = []
+        if !text.isEmpty { blocks.append(text) }
+        let files = attachments.compactMap(\.promptBlock)
+        if !files.isEmpty {
+            blocks.append("【附件内容】\n" + files.joined(separator: "\n\n"))
+        }
+        if !searchResults.isEmpty {
+            blocks.append(SearchPrompt.resultsBlock(searchResults))
+        }
+        if blocks.isEmpty {
+            return attachments.contains(where: \.isImage) ? "请描述图片内容。" : "请阅读附件内容。"
+        }
+        return blocks.joined(separator: "\n\n")
     }
 }

@@ -28,9 +28,15 @@ enum TestStore {
     }
 
     /// 清空全部模型。删不掉的类型直接抛错，不留半个库给后面的用例。
+    /// 用逐条 delete 而不是 `delete(model:)`：批量删除会绕过级联，撞上附件关系的约束。
     static func reset() throws {
         let context = context
-        try context.delete(model: KimiChatMessage.self)
+        for message in try context.fetch(FetchDescriptor<KimiChatMessage>()) {
+            context.delete(message)
+        }
+        for attachment in try context.fetch(FetchDescriptor<ChatAttachment>()) {
+            context.delete(attachment)
+        }
         try context.save()
     }
 

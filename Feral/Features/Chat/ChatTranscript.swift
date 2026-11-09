@@ -64,28 +64,55 @@ struct ChatTranscript: View {
     }
 }
 
-/// 一个气泡。助手消息走 markdown，用户消息是纯文本。
+/// 一个气泡。助手消息走 markdown，用户消息是纯文本；附件显示在气泡上方。
 struct Bubble: View {
     let message: KimiChatMessage
 
     var body: some View {
-        HStack {
+        HStack(alignment: .bottom) {
             if message.role == .user { Spacer(minLength: 40) }
-            content
+            VStack(alignment: message.role == .user ? .trailing : .leading, spacing: 6) {
+                if !message.attachments.isEmpty {
+                    attachmentsView
+                }
+                content
+            }
             if message.role == .assistant { Spacer(minLength: 40) }
         }
     }
 
     @ViewBuilder
     private var content: some View {
-        if message.role == .assistant {
-            MarkdownText(text: message.content)
-                .padding(10)
-                .background(bubbleBackground(for: .assistant), in: .rect(cornerRadius: 12))
-        } else {
-            Text(message.content)
-                .padding(10)
-                .background(bubbleBackground(for: .user), in: .rect(cornerRadius: 12))
+        if !message.content.isEmpty {
+            if message.role == .assistant {
+                MarkdownText(text: message.content)
+                    .padding(10)
+                    .background(bubbleBackground(for: .assistant), in: .rect(cornerRadius: 12))
+            } else {
+                Text(message.content)
+                    .padding(10)
+                    .background(bubbleBackground(for: .user), in: .rect(cornerRadius: 12))
+            }
+        }
+    }
+
+    private var attachmentsView: some View {
+        VStack(alignment: message.role == .user ? .trailing : .leading, spacing: 6) {
+            ForEach(message.attachments.sorted { $0.createdAt < $1.createdAt }, id: \.id) { attachment in
+                if attachment.kind == .image, let image = attachment.image {
+                    Image(uiImage: image)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(maxWidth: 180, maxHeight: 180)
+                        .clipShape(.rect(cornerRadius: 12))
+                } else {
+                    Label(attachment.fileName, systemImage: "doc.text")
+                        .font(.caption)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+                        .background(.secondary.opacity(0.1), in: .capsule)
+                }
+            }
         }
     }
 }

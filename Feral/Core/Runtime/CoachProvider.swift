@@ -87,7 +87,8 @@ extension CoachProviderProfile {
                 title: "DeepSeek V4.1 Flash",
                 note: "快且省，原生多模态，支持思考模式",
                 acceptsReasoningEffort: true,
-                acceptsThinkingToggle: true
+                acceptsThinkingToggle: true,
+                acceptsImages: true
             ),
         ]
     )
@@ -106,7 +107,8 @@ extension CoachProviderProfile {
                 id: "deepseek-v4.1-flash",
                 title: "DeepSeek V4.1 Flash",
                 note: "默认，快且省",
-                acceptsReasoningEffort: true
+                acceptsReasoningEffort: true,
+                acceptsImages: true
             ),
             CoachModel(
                 id: "kimi-k3.1-pro",
@@ -138,6 +140,8 @@ struct CoachModel: Hashable, Identifiable, Sendable {
     var acceptsReasoningEffort = false
     /// 要不要发请求顶层的 `thinking: {"type": "enabled"}`（DeepSeek 思考模式开关）。
     var acceptsThinkingToggle = false
+    /// 能不能收图片（多模态）。不确定的模型一律 false，避免把图片发给纯文本端点。
+    var acceptsImages = false
 }
 
 /// 提供商选择的持久化。不是秘密，放 UserDefaults 就够；API Key 仍然只在钥匙串。

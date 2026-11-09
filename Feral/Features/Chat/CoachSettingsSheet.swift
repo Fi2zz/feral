@@ -39,6 +39,7 @@ struct CoachSettingsSheet: View {
                 ProviderModelSection(provider: provider, onModelChange: onModelChange)
                     .id(provider)
                 runtimeSection
+                SearchKeySection()
             }
             .navigationTitle("设置")
             .navigationBarTitleDisplayMode(.inline)

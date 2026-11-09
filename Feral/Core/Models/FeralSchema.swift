@@ -5,6 +5,7 @@ import SwiftData
 enum FeralSchema {
     static let models: [any PersistentModel.Type] = [
         KimiChatMessage.self,
+        ChatAttachment.self,
     ]
 
     static func makeContainer(inMemory: Bool = false) throws -> ModelContainer {

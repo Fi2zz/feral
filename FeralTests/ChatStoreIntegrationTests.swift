@@ -1,4 +1,5 @@
 import Foundation
+import SwiftusSearch
 import Testing
 
 @testable import Feral
@@ -138,6 +139,40 @@ struct ChatStoreIntegrationTests {
         #expect(store.failure == nil)
         let reply = try #require(store.messages.last?.content)
         #expect(reply.contains("x-opencode-session：\(store.conversationID.uuidString)"))
+    }
+
+    @Test("智能搜索：结果以 <search_results> 拼进请求")
+    func searchResultsInjected() async throws {
+        setenv("KIMI_BASE_URL", MockKimiServer.baseUrl, 1)
+        defer { unsetenv("KIMI_BASE_URL") }
+        let restoreProvider = MockKimiServer.pinKimiProvider()
+        defer { restoreProvider() }
+        let restoreKey = MockKimiServer.stashKey()
+        defer { restoreKey() }
+        try CoachKeyStore.save("sk-mock", provider: .kimi)
+
+        let runtimeStore = RuntimeStore()
+        runtimeStore.start()
+        try await waitUntilBooted(runtimeStore)
+
+        let defaults = try #require(UserDefaults(suiteName: "search-\(UUID().uuidString)"))
+        KimiConversationStore.startNew(in: defaults)
+        let store = ChatStore(
+            modelContext: TestStore.context,
+            runtime: runtimeStore,
+            search: { query in
+                #expect(query == "最近有什么新闻")
+                return [SearchResult(title: "标题", url: "https://example.com", snippet: "摘要")]
+            },
+            defaults: defaults
+        )
+        store.reload()
+
+        await store.send("最近有什么新闻", searchEnabled: true)
+
+        #expect(store.failure == nil)
+        let reply = try #require(store.messages.last?.content)
+        #expect(reply.contains("搜索 ✓"))
     }
 
     /// 一条用例一段独立会话。测试共用 `TestStore.context` 这一个消息库，如果都用
